@@ -2,31 +2,36 @@ import os
 import string
 import torch
 import torch.nn as nn
+
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
+
 import numpy as np
 import load_embeddings
 from progressbar_utils import init_progress_bar
 import pdb
+import pickle
 
 # Hyperparameters
 BATCH_SIZE = 1
-CHUNK_LENGTH = 100  # How many characters to look at at a time
-ITERATIONS = 100000//4
+CHUNK_LENGTH = 1000  # How many characters to look at at a time
+ITERATIONS = 10000
 LEARNING_RATE = 5e-3
 
 # Filenames
 FILENAME = 'shakespeare.txt'
 EMBED_FILE = 'char-embeddings.txt'
-SAVE_NAME = 'writing'
+SAVE_NAME = 'weights.pt'
 
 EMBEDDINGS = load_embeddings.load(EMBED_FILE)
-VOCABULARY = list(EMBEDDINGS.keys())
+VOCABULARY = pickle.load(open('vocab.pkl', 'rb'))
 CUDA = torch.cuda.is_available()
 
 EMBED_SIZE = 300
-PRINT_EVERY = 200
-SAVE_EVERY = 10000
-WARM_START = True   # Keep training the existing model instead of just using it
+PRINT_EVERY = 100
+SAVE_EVERY = 1000
+WARM_START = False   # Keep training the existing model instead of just using it
                     # to write out text
 
 if CUDA:
@@ -138,15 +143,15 @@ class Trainer:
                     print('\nLSTM: ', word_pred)
                     print('----------------------')
                     print(model.write(100))
-                    # input('Press ENTER to continue training-------')
 
                 if i % SAVE_EVERY == 0:
-                    torch.save(model, SAVE_NAME)
+                    torch.save(model.state_dict(), SAVE_NAME)
                     print('[INFO] Saved weights')
 
         except KeyboardInterrupt:
             print('\n[INFO] Saving weights before quitting')
-            torch.save(model, SAVE_NAME)
+            torch.save(model.state_dict(), SAVE_NAME)
+            raise KeyboardInterrupt
 
         return loss_history
 
@@ -227,7 +232,10 @@ if __name__ == '__main__':
     new_model = False
     if os.path.isfile(SAVE_NAME):
         # Load the pretrained model
-        model = torch.load(SAVE_NAME).to(device)
+        print('[INFO] Loading pretrained model')
+        model = SequenceGRU(EMBED_SIZE, EMBED_SIZE, len(VOCABULARY)).to(device)
+        model.load_state_dict(torch.load(SAVE_NAME))
+        model.train()
     else:
         # Train a new model from scratch
         model = SequenceGRU(EMBED_SIZE, EMBED_SIZE, len(VOCABULARY)).to(device)
@@ -237,11 +245,11 @@ if __name__ == '__main__':
         gen = batch_generator(FILENAME, BATCH_SIZE, CHUNK_LENGTH, ITERATIONS)
         trainer = Trainer(model, gen)
         loss = trainer.train(LEARNING_RATE, BATCH_SIZE, ITERATIONS)
-        torch.save(model, SAVE_NAME)
+        torch.save(model.state_dict(), SAVE_NAME)
         plt.figure()
         plt.plot(range(ITERATIONS), loss)
         plt.savefig('loss.png')
 
     model.eval()
-    output = model.write(1000)
+    output = model.write(100)
     print(output)
