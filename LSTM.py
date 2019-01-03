@@ -124,12 +124,8 @@ class Trainer:
             for i, x, y in self.gen:
                 y_pred = self.model(x)
                 loss_fn = 0
-                word = ''
-                word_pred = ''
                 for j in range(CHUNK_LENGTH):
                     loss_fn += self.criterion(y_pred[:, j, :], y[:, j])
-                    word += VOCABULARY[y[0, j]]
-                    word_pred += VOCABULARY[torch.argmax(y_pred[0, j, :])]
 
                 optimizer.zero_grad()
                 loss_fn.backward()
@@ -139,10 +135,9 @@ class Trainer:
                 bar.update(i + 1)
 
                 if i % PRINT_EVERY == 0:
-                    print('\nShakespeare: ', word)
-                    print('\nLSTM: ', word_pred)
-                    print('----------------------')
+                    print('Sample:')
                     print(model.write(100))
+                    print('-' * 80)
 
                 if i % SAVE_EVERY == 0:
                     torch.save(model.state_dict(), SAVE_NAME)
