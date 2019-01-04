@@ -15,6 +15,7 @@ import pickle
 
 # Hyperparameters
 BATCH_SIZE = 1
+HIDDEN_SIZE = 512
 CHUNK_LENGTH = 1000  # How many characters to look at at a time
 ITERATIONS = 10000
 LEARNING_RATE = 5e-3
@@ -22,7 +23,7 @@ LEARNING_RATE = 5e-3
 # Filenames
 FILENAME = 'shakespeare.txt'
 EMBED_FILE = 'char-embeddings.txt'
-SAVE_NAME = 'weights.pt'
+SAVE_NAME = 'big_weights.pt'
 
 EMBEDDINGS = load_embeddings.load(EMBED_FILE)
 VOCABULARY = pickle.load(open('vocab.pkl', 'rb'))
@@ -164,6 +165,7 @@ class SequenceGRU(nn.Module):
         super(SequenceGRU, self).__init__()
         self.cell = nn.LSTMCell(input_size, hidden_size)
         self.cell2 = nn.LSTMCell(hidden_size, hidden_size)
+        self.cell3 = nn.LSTMCell(hidden_size, hidden_size)
         self.h2o = nn.Linear(hidden_size, output)
         self.hidden_size = hidden_size
         self.output_size = output
@@ -186,12 +188,15 @@ class SequenceGRU(nn.Module):
         out = torch.zeros(batch_size, seq_len, self.output_size, device=device)
         self.cell.zero_grad()
         self.cell2.zero_grad()
-        hidden = None  #self.cell(x[:, 0, :])
-        hidden2 = None  #self.cell2(x[:, 0, :])
+        self.cell3.zero_grad()
+        hidden = None
+        hidden2 = None
+        hidden3 = None
         for i in range(1, seq_len):
             hidden = self.cell(x[:, i, :], hidden)
             hidden2 = self.cell2(hidden[0], hidden2)
-            out[:, i, :] = self.h2o(hidden2[0])
+            hidden3 = self.cell3(hidden2[0], hidden3)
+            out[:, i, :] = self.h2o(hidden3[0])
         return out
 
     def write(self, length):
@@ -210,11 +215,13 @@ class SequenceGRU(nn.Module):
             result = ''
             hidden1 = None
             hidden2 = None
+            hidden3 = None
             x = embed(' ').to(device)
             for i in range(length):
                 hidden1 = self.cell(x, hidden1)
                 hidden2 = self.cell2(hidden1[0], hidden2)
-                probs = nn.Softmax(dim=1)(self.h2o(hidden2[0])).cpu()
+                hidden3 = self.cell3(hidden2[0], hidden3)
+                probs = nn.Softmax(dim=1)(self.h2o(hidden3[0])).cpu()
                 probs = np.squeeze(np.array(probs))
                 next_char = np.random.choice(VOCABULARY, p=probs)
                 result += next_char
@@ -228,12 +235,16 @@ if __name__ == '__main__':
     if os.path.isfile(SAVE_NAME):
         # Load the pretrained model
         print('[INFO] Loading pretrained model')
-        model = SequenceGRU(EMBED_SIZE, EMBED_SIZE, len(VOCABULARY)).to(device)
-        model.load_state_dict(torch.load(SAVE_NAME))
+        model = SequenceGRU(EMBED_SIZE, HIDDEN_SIZE, len(VOCABULARY)).to(device)
+        if CUDA:
+            map_location = 'cuda'
+        else:
+            map_location = 'cpu'
+        model.load_state_dict(torch.load(SAVE_NAME, map_location=map_location))
         model.train()
     else:
         # Train a new model from scratch
-        model = SequenceGRU(EMBED_SIZE, EMBED_SIZE, len(VOCABULARY)).to(device)
+        model = SequenceGRU(EMBED_SIZE, HIDDEN_SIZE, len(VOCABULARY)).to(device)
         new_model = True
 
     if new_model or WARM_START:
@@ -246,5 +257,5 @@ if __name__ == '__main__':
         plt.savefig('loss.png')
 
     model.eval()
-    output = model.write(100)
+    output = model.write(10000)
     print(output)
