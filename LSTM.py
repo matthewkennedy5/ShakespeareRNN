@@ -14,16 +14,18 @@ import pdb
 import pickle
 
 # Hyperparameters
-BATCH_SIZE = 1
+BATCH_SIZE = 2
 HIDDEN_SIZE = 512
 CHUNK_LENGTH = 1000  # How many characters to look at at a time
 ITERATIONS = 10000
 LEARNING_RATE = 5e-3
+DECAY_RATE = 0.9    # Multiply the learning rate by this every so often
+DECAY_EVERY = 10000 # Decay the learning rate after this many iterations
 
 # Filenames
 FILENAME = 'shakespeare.txt'
 EMBED_FILE = 'char-embeddings.txt'
-SAVE_NAME = 'big_weights.pt'
+SAVE_NAME = 'test.pt'
 
 EMBEDDINGS = load_embeddings.load(EMBED_FILE)
 VOCABULARY = pickle.load(open('vocab.pkl', 'rb'))
@@ -119,6 +121,7 @@ class Trainer:
         """
         loss_history = np.zeros(iters)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, DECAY_RATE)
         bar = init_progress_bar(iters)
         bar.start()
         try:
@@ -135,17 +138,23 @@ class Trainer:
                 print('\r', loss_fn.item())
                 bar.update(i + 1)
 
-                if i % PRINT_EVERY == 0:
-                    print('Sample:')
-                    print(model.write(100))
-                    print('-' * 80)
+                if i != 0:
 
-                if i % SAVE_EVERY == 0:
-                    torch.save(model.state_dict(), SAVE_NAME)
-                    print('[INFO] Saved weights')
+                    if i % DECAY_EVERY == 0:
+                        scheduler.step()
+                        print('[INFO] Decayed the learning rate.')
+
+                    if i % PRINT_EVERY == 0:
+                        print('Sample:')
+                        print(model.write(100))
+                        print('-' * 80)
+
+                    if i % SAVE_EVERY == 0:
+                        torch.save(model.state_dict(), SAVE_NAME)
+                        print('[INFO] Saved weights.')
 
         except KeyboardInterrupt:
-            print('\n[INFO] Saving weights before quitting')
+            print('\n[INFO] Saving weights before quitting.\n')
             torch.save(model.state_dict(), SAVE_NAME)
             raise KeyboardInterrupt
 
@@ -234,7 +243,7 @@ if __name__ == '__main__':
     new_model = False
     if os.path.isfile(SAVE_NAME):
         # Load the pretrained model
-        print('[INFO] Loading pretrained model')
+        print('[INFO] Loading pretrained model.')
         model = SequenceGRU(EMBED_SIZE, HIDDEN_SIZE, len(VOCABULARY)).to(device)
         if CUDA:
             map_location = 'cuda'
