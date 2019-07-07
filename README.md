@@ -47,4 +47,10 @@ Enough of sound, Master Shence.                                                 
 
 ### LSTM Model
 
-For this learning task, I used a 3-layer Long Short Term Memory (LSTM) model with a hidden size of 512 nodes at each layer. Since the Shakespeare dataset is relatively small, overfitting can be an issue, but my main consideration for the model size was keeping the training time reasonable. Larger models would most likely perform better, albeit with diminishing returns. I trained with the Adam optimizer with a learning rate of 5e-3. 
+For this learning task, I used a 3-layer Long Short Term Memory (LSTM) model with a hidden size of 512 nodes at each layer. Since the Shakespeare dataset is relatively small, overfitting can be an issue, but my main consideration for the model size was keeping the training time reasonable. Larger models would most likely perform better, albeit with diminishing returns. I trained with the Adam optimizer with a learning rate of 5e-3. I used 300-dimensional character embeddings from [this repo](https://github.com/minimaxir/char-embeddings). 
+
+### Running the code
+
+To run the code, clone the repo and type `python LSTM.py` into the command prompt (after installing the necessary packages). Hyperparameters can be found as constants at the top of LSTM.py, and this model can be made to train on any text corpus by specifying it in the `FILENAME` constant. 
+
+
