@@ -25,7 +25,7 @@ DECAY_EVERY = 10000 # Decay the learning rate after this many iterations
 # Filenames
 FILENAME = 'shakespeare.txt'
 EMBED_FILE = 'char-embeddings.txt'
-SAVE_NAME = 'test.pt'
+SAVE_NAME = 'big_weights.pt'
 
 EMBEDDINGS = load_embeddings.load(EMBED_FILE)
 VOCABULARY = pickle.load(open('vocab.pkl', 'rb'))
