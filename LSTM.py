@@ -161,8 +161,8 @@ class Trainer:
         return loss_history
 
 
-class SequenceGRU(nn.Module):
-    """Two-layer LSTM model for sequence generation.
+class RNNModel(nn.Module):
+    """Three-layer LSTM model for sequence generation.
 
     Constructor inputs:
         input_size - Number of input dimensions of the data
@@ -171,7 +171,7 @@ class SequenceGRU(nn.Module):
     """
 
     def __init__(self, input_size, hidden_size, output):
-        super(SequenceGRU, self).__init__()
+        super(RNNModel, self).__init__()
         self.cell = nn.LSTMCell(input_size, hidden_size)
         self.cell2 = nn.LSTMCell(hidden_size, hidden_size)
         self.cell3 = nn.LSTMCell(hidden_size, hidden_size)
@@ -180,7 +180,7 @@ class SequenceGRU(nn.Module):
         self.output_size = output
 
     def forward(self, x):
-        """Compute a forward pass of SequenceGRU.
+        """Compute a forward pass of RNNModel.
 
         The net takes input data at each time step, as opposed to the write()
         method in which the net uses its previous output as its next input.
@@ -244,7 +244,7 @@ if __name__ == '__main__':
     if os.path.isfile(SAVE_NAME):
         # Load the pretrained model
         print('[INFO] Loading pretrained model.')
-        model = SequenceGRU(EMBED_SIZE, HIDDEN_SIZE, len(VOCABULARY)).to(device)
+        model = RNNModel(EMBED_SIZE, HIDDEN_SIZE, len(VOCABULARY)).to(device)
         if CUDA:
             map_location = 'cuda'
         else:
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         model.train()
     else:
         # Train a new model from scratch
-        model = SequenceGRU(EMBED_SIZE, HIDDEN_SIZE, len(VOCABULARY)).to(device)
+        model = RNNModel(EMBED_SIZE, HIDDEN_SIZE, len(VOCABULARY)).to(device)
         new_model = True
 
     if new_model or WARM_START:
